@@ -1,0 +1,41 @@
+"""
+Day 10: Introduction to Django — The 'Batteries-Included' Python Framework
+
+Key Concepts:
+1. Django is a high-level Python web framework for building full web apps fast.
+2. It follows the MVC pattern (Model-View-Controller), in Django called MVT:
+   - Model → Database layer
+   - View → Business logic
+   - Template → Frontend (HTML)
+3. Django automatically provides:
+   - Admin panel
+   - ORM (database access)
+   - URL routing
+   - Authentication system
+   - Security features
+4. Workflow summary:
+   a. Create a Django project (holds global settings)
+   b. Create Django apps (features or modules)
+   c. Connect URLs → Views → Templates → Models
+"""
+
+# Example: The structure of a Django request
+def handle_request(request):
+    """
+    Django takes a web request -> matches it to a URL pattern ->
+    executes the corresponding view -> returns a response.
+    """
+    url = request.path
+    print(f"User requested: {url}")
+
+    # Django resolves this request
+    if url == "/":
+        return "Homepage"
+    elif url == "/about/":
+        return "About Page"
+    else:
+        return "404 - Page Not Found"
+
+# Simulated request handling
+print(handle_request(type("Request", (object,), {"path": "/"})()))
+
