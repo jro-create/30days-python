@@ -1,2 +1,16 @@
+# Python files
+*.pyc
+__pycache__/
+*.egg-info/
+
+# Virtual Environment
+venv/
+.env
+
+# Operating System junk (Mac)
 .DS_Store
-.DS_Store
+
+# Django specific
+db.sqlite3
+/media
+/static
