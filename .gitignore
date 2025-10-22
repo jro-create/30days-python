@@ -14,3 +14,12 @@ venv/
 db.sqlite3
 /media
 /static
+
+# Mini-Projects to ignore
+day2_guess_the_number.py
+day3_calculator.py
+day4_contact_book.py
+day6_student_tracker.py
+day7_grade_analyzer.py
+day7_notes_app.py
+day9_expense_tracker.py
