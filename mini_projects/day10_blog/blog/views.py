@@ -1,20 +1,36 @@
-from django.shortcuts import render, redirect
+from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from .models import Post
-from .forms import PostForm
 
-def home(request):
-    # If your URL name 'home' is already used elsewhere, rename this to post_list and update urls.
-    posts = Post.objects.all().order_by("-date_posted")
-    return render(request, "blog/post_list.html", {"posts": posts})
+class PostListView(ListView):
+    model = Post
+    ordering = ['-date_posted']  # newest first
+    template_name = "blog/post_list.html"   # keeps your existing template
+    context_object_name = "posts"           # use 'posts' in template
 
-def post_create(request):
-    if request.method == "POST":
-        form = PostForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect("home")   # after create, go back to list
-    else:
-        form = PostForm()
-    return render(request, "blog/post_form.html", {"form": form, "action": "Create"})
+class PostDetailView(DetailView):
+    model = Post
+    template_name = "blog/post_detail.html"
+    context_object_name = "post"
+
+class PostCreateView(LoginRequiredMixin, CreateView):
+    model = Post
+    fields = ["title", "author", "content"]
+    template_name = "blog/post_form.html"
+    success_url = reverse_lazy("post_list")
+
+class PostUpdateView(LoginRequiredMixin, UpdateView):
+    model = Post
+    fields = ["title", "author", "content"]
+    template_name = "blog/post_form.html"
+    success_url = reverse_lazy("post_list")
+
+class PostDeleteView(LoginRequiredMixin, DeleteView):
+    model = Post
+    template_name = "blog/post_confirm_delete.html"
+    success_url = reverse_lazy("post_list")
+
+
 
 

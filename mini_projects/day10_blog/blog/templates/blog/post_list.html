@@ -8,8 +8,9 @@
   <ul>
     {% for post in posts %}
       <li>
-        <strong>{{ post.title }}</strong> — {{ post.author }}<br>
-        {{ post.content }}<br>
+        <a href="{% url 'post_detail' post.pk %}"><strong>{{ post.title }}</strong></a>
+        — {{ post.author }}
+        <br>
         <small>Posted: {{ post.date_posted }}</small>
       </li>
     {% empty %}
