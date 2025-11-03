@@ -2,12 +2,14 @@
 <html>
 <head><meta charset="utf-8"><title>Post Form</title></head>
 <body>
-  <h1>{{ view.__class__.__name__|cut:"View" }}</h1>
+  <h1>{% if object %}Edit Post{% else %}Create Post{% endif %}</h1>
+
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Save</button>
   </form>
+
   <p><a href="{% url 'post_list' %}">← Back</a></p>
 </body>
 </html>
