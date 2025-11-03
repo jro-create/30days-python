@@ -23,3 +23,7 @@ day6_student_tracker.py
 day7_grade_analyzer.py
 day7_notes_app.py
 day9_expense_tracker.py
+
+# Editors
+.vscode/
+.idea/
