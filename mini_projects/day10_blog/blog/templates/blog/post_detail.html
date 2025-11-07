@@ -1,36 +1,24 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>{{ post.title }}</title>
-</head>
+<head><meta charset="utf-8"><title>{{ post.title }}</title></head>
 <body>
-  <!-- Flash messages -->
   {% if messages %}
     <ul>
-      {% for message in messages %}
-        <li>{{ message }}</li>
-      {% endfor %}
+      {% for message in messages %}<li>{{ message }}</li>{% endfor %}
     </ul>
   {% endif %}
 
-  <!-- Post header -->
   <h1>{{ post.title }}</h1>
   <p><em>by {{ post.author }} on {{ post.date_posted }}</em></p>
-
-  <!-- Post content -->
   <p>{{ post.content }}</p>
 
-  <!-- Post actions -->
   <p>
-    <a href="{% url 'post_edit' post.pk %}">Edit</a> |
-    <a href="{% url 'post_delete' post.pk %}">Delete</a> |
+    <a href="{% url 'post_edit' post.slug %}">Edit</a> |
+    <a href="{% url 'post_delete' post.slug %}">Delete</a> |
     <a href="{% url 'post_list' %}">← Back to list</a>
   </p>
 
   <hr>
-
-  <!-- Comments list -->
   <h2>Comments</h2>
   <ul>
     {% for c in post.comments.all %}
@@ -48,19 +36,16 @@
     {% endfor %}
   </ul>
 
-  <!-- Add comment -->
   {% if user.is_authenticated %}
-  <h3>Add a comment</h3>
-  <form method="post" action="{% url 'comment_create' post.pk %}">
-    {% csrf_token %}
-    <input type="hidden" name="post_id" value="{{ post.pk }}">
-    <textarea name="content" rows="3" placeholder="Write a comment..." required></textarea>
-    <br>
-    <button type="submit">Post comment</button>
-  </form>
-{% else %}
-  <p><a href="/login/">Log in</a> to comment.</p>
-{% endif %}
-
+    <h3>Add a comment</h3>
+    <form method="post" action="{% url 'comment_create' post.slug %}">
+      {% csrf_token %}
+      <textarea name="content" rows="3" placeholder="Write a comment..." required></textarea>
+      <br><button type="submit">Post comment</button>
+    </form>
+  {% else %}
+    <p><a href="{% url 'login' %}?next={% url 'post_detail' post.slug %}">Log in</a> to comment.</p>
+  {% endif %}
 </body>
 </html>
+

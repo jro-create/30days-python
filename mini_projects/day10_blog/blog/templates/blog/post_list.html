@@ -4,30 +4,26 @@
 <body>
   <h1>📝 My Blog Posts</h1>
 
-  <!-- Flash messages -->
   {% if messages %}
     <ul>
-      {% for message in messages %}
-        <li>{{ message }}</li>
-      {% endfor %}
+      {% for message in messages %}<li>{{ message }}</li>{% endfor %}
     </ul>
   {% endif %}
 
-  <p><a href="{% url 'post_create' %}">+ Create New Post</a></p>
+  <p><a href="{% url 'post_create' %}">+ Create New Post</a> | <a href="/login/">Login</a> | <a href="/logout/">Logout</a></p>
 
   <ul>
     {% for post in posts %}
       <li>
-        <a href="{% url 'post_detail' post.pk %}"><strong>{{ post.title }}</strong></a>
-        — {{ post.author }}
-        <br><small>Posted: {{ post.date_posted }}</small>
+        <a href="{% url 'post_detail' post.slug %}"><strong>{{ post.title }}</strong></a>
+        — {{ post.author }}<br>
+        <small>Posted: {{ post.date_posted }}</small>
       </li>
     {% empty %}
       <li>No posts yet.</li>
     {% endfor %}
   </ul>
 
-  <!-- Pagination controls -->
   {% if is_paginated %}
     <div>
       {% if page_obj.has_previous %}

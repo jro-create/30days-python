@@ -1,7 +1,8 @@
 from django.urls import reverse, reverse_lazy
+from django.http import HttpResponsePermanentRedirect
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
 from django.shortcuts import get_object_or_404, redirect
 from .models import Post, Comment
 from .forms import PostForm, CommentForm
@@ -17,23 +18,29 @@ class PostDetailView(DetailView):
     model = Post
     template_name = "blog/post_detail.html"
     context_object_name = "post"
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
     template_name = "blog/post_form.html"
-    success_url = reverse_lazy("post_list")
 
     def form_valid(self, form):
         form.instance.author = self.request.user.username
         messages.success(self.request, "Post created successfully.")
-        return super().form_valid(form)
+        resp = super().form_valid(form)
+        return resp
+
+    def get_success_url(self):
+        return reverse("post_detail", kwargs={"slug": self.object.slug})
 
 class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Post
     form_class = PostForm
     template_name = "blog/post_form.html"
-    success_url = reverse_lazy("post_list")
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
 
     def test_func(self):
         obj = self.get_object()
@@ -47,10 +54,14 @@ class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         messages.success(self.request, "Post updated successfully.")
         return super().form_valid(form)
 
+    def get_success_url(self):
+        return reverse("post_detail", kwargs={"slug": self.object.slug})
+
 class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Post
     template_name = "blog/post_confirm_delete.html"
-    success_url = reverse_lazy("post_list")
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
 
     def test_func(self):
         obj = self.get_object()
@@ -64,6 +75,25 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         messages.success(self.request, "Post deleted.")
         return super().delete(request, *args, **kwargs)
 
+    def get_success_url(self):
+        return reverse("post_list")
+
+# Legacy pk -> slug redirects
+class LegacyPostDetailRedirect(View):
+    def get(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        return HttpResponsePermanentRedirect(reverse("post_detail", kwargs={"slug": post.slug}))
+
+class LegacyPostEditRedirect(View):
+    def get(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        return HttpResponsePermanentRedirect(reverse("post_edit", kwargs={"slug": post.slug}))
+
+class LegacyPostDeleteRedirect(View):
+    def get(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        return HttpResponsePermanentRedirect(reverse("post_delete", kwargs={"slug": post.slug}))
+
 # ---- Comments ----
 
 class CommentCreateView(LoginRequiredMixin, CreateView):
@@ -72,15 +102,17 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
     template_name = "blog/comment_form.html"  # fallback
 
     def dispatch(self, request, *args, **kwargs):
-        # Accept post id from URL or hidden input; guard invalid values
-        raw_id = kwargs.get("pk") or request.POST.get("post_id")
-        try:
-            post_id = int(raw_id)
-        except (TypeError, ValueError):
-            messages.error(request, "Invalid post id.")
-            return redirect("post_list")
-
-        self.post_obj = get_object_or_404(Post, pk=post_id)
+        raw_slug = kwargs.get("slug")
+        if raw_slug:
+            self.post_obj = get_object_or_404(Post, slug=raw_slug)
+        else:
+            raw_id = request.POST.get("post_id")
+            try:
+                post_id = int(raw_id)
+            except (TypeError, ValueError):
+                messages.error(request, "Invalid post id.")
+                return redirect("post_list")
+            self.post_obj = get_object_or_404(Post, pk=post_id)
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -90,7 +122,7 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse("post_detail", kwargs={"pk": self.post_obj.pk})
+        return reverse("post_detail", kwargs={"slug": self.post_obj.slug})
 
 class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Comment
@@ -105,5 +137,5 @@ class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         return super().handle_no_permission()
 
     def get_success_url(self):
-        return reverse("post_detail", kwargs={"pk": self.object.post.pk})
+        return reverse("post_detail", kwargs={"slug": self.object.post.slug})
 
