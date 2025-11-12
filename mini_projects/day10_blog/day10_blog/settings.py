@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'blog', 'users','rest_framework',
     'rest_framework.authtoken',
+    'drf_spectacular',
 
 ]
 
@@ -133,7 +134,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = 'login'
 
-# DRF defaults (read-only today; pagination on lists)
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 5,
@@ -143,8 +143,18 @@ REST_FRAMEWORK = {
     ],
 
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',      # Browser (CSRF required)
-        'rest_framework.authentication.TokenAuthentication',        # CLI/curl (no CSRF)
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
+
+    # ✅ tell DRF how to build the OpenAPI schema
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Day10 Blog API',
+    'DESCRIPTION': 'Read-only endpoints under /api/, write-capable under /api/v1/. Token + Session auth.',
+    'VERSION': '1.0.0',
+    # you can add SERVE_PERMISSIONS later if you want docs restricted
 }
 
