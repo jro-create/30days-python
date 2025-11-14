@@ -1,3 +1,4 @@
+from django.views.generic import RedirectView 
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
@@ -25,5 +26,9 @@ urlpatterns = [
 
     # HTML site
     path('', include('blog.urls')),
+
+# Safety net: if anything points to the default URL, send it to your real login page
+    path('accounts/login/', RedirectView.as_view(url='/login/', permanent=False)),
+
 ]
 
