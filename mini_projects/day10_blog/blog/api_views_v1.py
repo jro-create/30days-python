@@ -5,6 +5,10 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
+# ✅ new imports for filtering/search/ordering
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+
 from .models import Post, Comment
 from .api_permissions import IsOwnerOrReadOnly
 from .api_serializers import (
@@ -14,17 +18,22 @@ from .api_serializers import (
 
 class PostViewSet(ModelViewSet):
     """
-    CRUD for posts.
-    - lookup by slug
-    - author set from request.user.username on create
-    - only owner can update/delete
-    - /api/v1/posts/<slug>/comments/ supports:
-        GET  -> list comments
-        POST -> create a comment (any authenticated user)
+    CRUD for posts (lookup by slug).
+    - Filters:  ?author=<name>
+    - Search:   ?search=term   (title, content, author)
+    - Ordering: ?ordering=title | -date_posted | author
+    - Comments sub-action: /api/v1/posts/<slug>/comments/  (GET, POST)
     """
     queryset = Post.objects.all().order_by("-date_posted")
     lookup_field = "slug"
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    # ✅ enable server-side filter/search/ordering
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["author"]              # exact match filter
+    search_fields = ["title", "content", "author"]  # text search
+    ordering_fields = ["date_posted", "title", "author"]
+    ordering = ["-date_posted"]                # default
 
     def get_serializer_class(self):
         # Use comment serializers for the custom 'comments' action
@@ -58,7 +67,7 @@ class PostViewSet(ModelViewSet):
         GET  /api/v1/posts/<slug>/comments/   -> list comments
         POST /api/v1/posts/<slug>/comments/   -> create a comment (body: {"content": "..."} )
         """
-        post = self.get_object()  # DRF will check IsAuthenticatedOrReadOnly; no owner check here
+        post = self.get_object()
 
         if request.method == "GET":
             qs = post.comments.all().order_by("-created_at")
@@ -79,12 +88,19 @@ class PostViewSet(ModelViewSet):
 class CommentViewSet(ModelViewSet):
     """
     CRUD for comments by id.
-    - list/retrieve open
-    - create allowed (requires 'post_slug' in payload) or use the post action above
-    - update/delete owner-only
+    - Filters:  ?author=<name>, ?post__slug=<slug>
+    - Search:   ?search=term  (content, author)
+    - Ordering: ?ordering=-created_at | author
     """
     queryset = Comment.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    # ✅ enable filter/search/ordering on comments, too
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["author", "post__slug"]
+    search_fields = ["content", "author"]
+    ordering_fields = ["created_at", "author"]
+    ordering = ["-created_at"]
 
     def get_serializer_class(self):
         if self.action in ["list", "retrieve"]:

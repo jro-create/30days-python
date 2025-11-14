@@ -39,8 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'blog', 'users','rest_framework',
     'rest_framework.authtoken',
-    'drf_spectacular',
-
+    'drf_spectacular','django_filters',
+    
 ]
 
 MIDDLEWARE = [
@@ -149,6 +149,11 @@ REST_FRAMEWORK = {
 
     # ✅ tell DRF how to build the OpenAPI schema
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
 }
 
 SPECTACULAR_SETTINGS = {
