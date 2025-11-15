@@ -1,141 +1,120 @@
-from django.urls import reverse, reverse_lazy
-from django.http import HttpResponsePermanentRedirect
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.views.generic import (
+    ListView, DetailView, CreateView, UpdateView, DeleteView, View
+)
+from django.http import HttpResponseRedirect
 from .models import Post, Comment
 from .forms import PostForm, CommentForm
 
+
+# ---------- Post list & detail ----------
+
 class PostListView(ListView):
     model = Post
-    ordering = ['-date_posted']
     template_name = "blog/post_list.html"
     context_object_name = "posts"
     paginate_by = 5
 
+
 class PostDetailView(DetailView):
     model = Post
     template_name = "blog/post_detail.html"
-    context_object_name = "post"
     slug_field = "slug"
     slug_url_kwarg = "slug"
+    context_object_name = "post"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        post = self.object
+        # Support either related_name="comments" or default comment_set
+        rel = getattr(post, "comments", None)
+        ctx["comments"] = rel.all() if rel is not None else post.comment_set.all()
+        ctx["comment_form"] = CommentForm()
+        return ctx
+
+
+# ---------- Create / Update / Delete posts ----------
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
-    form_class = PostForm
     template_name = "blog/post_form.html"
+    form_class = PostForm  # single source of truth; do NOT declare `fields`
 
     def form_valid(self, form):
+        # Your project stores author as a string (username)
         form.instance.author = self.request.user.username
-        messages.success(self.request, "Post created successfully.")
-        resp = super().form_valid(form)
-        return resp
-
-    def get_success_url(self):
-        return reverse("post_detail", kwargs={"slug": self.object.slug})
-
-class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = Post
-    form_class = PostForm
-    template_name = "blog/post_form.html"
-    slug_field = "slug"
-    slug_url_kwarg = "slug"
-
-    def test_func(self):
-        obj = self.get_object()
-        return obj.author == self.request.user.username
-
-    def handle_no_permission(self):
-        messages.error(self.request, "You don't have permission to edit this post.")
-        return super().handle_no_permission()
-
-    def form_valid(self, form):
-        messages.success(self.request, "Post updated successfully.")
         return super().form_valid(form)
 
     def get_success_url(self):
         return reverse("post_detail", kwargs={"slug": self.object.slug})
+
+
+class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = Post
+    template_name = "blog/post_form.html"
+    form_class = PostForm
+    slug_field = "slug"
+    slug_url_kwarg = "slug"
+
+    def test_func(self):
+        return self.get_object().author == self.request.user.username
+
+    def get_success_url(self):
+        return reverse("post_detail", kwargs={"slug": self.object.slug})
+
 
 class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Post
     template_name = "blog/post_confirm_delete.html"
     slug_field = "slug"
     slug_url_kwarg = "slug"
+    success_url = reverse_lazy("post_list")  # class attribute needs reverse_lazy
 
     def test_func(self):
-        obj = self.get_object()
-        return obj.author == self.request.user.username
+        return self.get_object().author == self.request.user.username
 
-    def handle_no_permission(self):
-        messages.error(self.request, "You don't have permission to delete this post.")
-        return super().handle_no_permission()
 
-    def delete(self, request, *args, **kwargs):
-        messages.success(self.request, "Post deleted.")
-        return super().delete(request, *args, **kwargs)
+# ---------- Comments ----------
 
-    def get_success_url(self):
-        return reverse("post_list")
+class CommentCreateView(LoginRequiredMixin, View):
+    """Create a comment under a post (POST only)."""
+    def post(self, request, slug):
+        post = get_object_or_404(Post, slug=slug)
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.post = post
+            comment.author = request.user.username
+            comment.save()
+        return HttpResponseRedirect(reverse("post_detail", kwargs={"slug": slug}))
 
-# Legacy pk -> slug redirects
-class LegacyPostDetailRedirect(View):
-    def get(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
-        return HttpResponsePermanentRedirect(reverse("post_detail", kwargs={"slug": post.slug}))
 
-class LegacyPostEditRedirect(View):
-    def get(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
-        return HttpResponsePermanentRedirect(reverse("post_edit", kwargs={"slug": post.slug}))
-
-class LegacyPostDeleteRedirect(View):
-    def get(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
-        return HttpResponsePermanentRedirect(reverse("post_delete", kwargs={"slug": post.slug}))
-
-# ---- Comments ----
-
-class CommentCreateView(LoginRequiredMixin, CreateView):
-    model = Comment
-    form_class = CommentForm
-    template_name = "blog/comment_form.html"  # fallback
-
+class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Delete a comment (POST only). Route carries both post slug and comment pk."""
     def dispatch(self, request, *args, **kwargs):
-        raw_slug = kwargs.get("slug")
-        if raw_slug:
-            self.post_obj = get_object_or_404(Post, slug=raw_slug)
-        else:
-            raw_id = request.POST.get("post_id")
-            try:
-                post_id = int(raw_id)
-            except (TypeError, ValueError):
-                messages.error(request, "Invalid post id.")
-                return redirect("post_list")
-            self.post_obj = get_object_or_404(Post, pk=post_id)
+        self.post_obj = get_object_or_404(Post, slug=kwargs["slug"])
+        self.comment = get_object_or_404(Comment, pk=kwargs["pk"], post=self.post_obj)
         return super().dispatch(request, *args, **kwargs)
 
-    def form_valid(self, form):
-        form.instance.post = self.post_obj
-        form.instance.author = self.request.user.username
-        messages.success(self.request, "Comment added.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("post_detail", kwargs={"slug": self.post_obj.slug})
-
-class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    model = Comment
-    template_name = "blog/comment_confirm_delete.html"
-
     def test_func(self):
-        c = self.get_object()
-        return (c.author == self.request.user.username) or (c.post.author == self.request.user.username)
+        # Only the comment author (or superuser) can delete
+        return (
+            self.comment.author == self.request.user.username
+            or self.request.user.is_superuser
+        )
 
-    def handle_no_permission(self):
-        messages.error(self.request, "You don't have permission to delete this comment.")
-        return super().handle_no_permission()
+    def post(self, request, slug, pk):
+        self.comment.delete()
+        return HttpResponseRedirect(reverse("post_detail", kwargs={"slug": slug}))
 
-    def get_success_url(self):
-        return reverse("post_detail", kwargs={"slug": self.object.post.slug})
+
+# ---------- Legacy redirects (keep old pk-based URLs working) ----------
+
+class LegacyPostDetailRedirect(View):
+    """Support old /posts/<pk>/ by redirecting to canonical /posts/<slug>/. """
+    def get(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        return redirect("post_detail", slug=post.slug)
 
