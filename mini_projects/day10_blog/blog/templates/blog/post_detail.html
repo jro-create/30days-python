@@ -1,51 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>{{ post.title }}</title></head>
-<body>
-  {% if messages %}
-    <ul>
-      {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-    </ul>
+{% extends "blog/base.html" %}
+{% block content %}
+<article>
+  <h2>{{ post.title }}</h2>
+  <p>by {{ post.author }} • {{ post.created|date:"Y-m-d H:i" }}</p>
+
+  {% if post.cover %}
+    <img src="{{ post.cover.url }}" alt="cover" style="max-width:600px;height:auto;border-radius:6px;margin:8px 0;">
   {% endif %}
 
-  <h1>{{ post.title }}</h1>
-  <p><em>by {{ post.author }} on {{ post.date_posted }}</em></p>
-  <p>{{ post.content }}</p>
+  <div>
+    {{ post.content|linebreaks }}
+  </div>
+</article>
 
-  <p>
-    <a href="{% url 'post_edit' post.slug %}">Edit</a> |
-    <a href="{% url 'post_delete' post.slug %}">Delete</a> |
-    <a href="{% url 'post_list' %}">← Back to list</a>
-  </p>
-
-  <hr>
-  <h2>Comments</h2>
-  <ul>
-    {% for c in post.comments.all %}
-      <li>
-        <p>{{ c.content }}</p>
-        <small>— {{ c.author }} on {{ c.created_at }}</small>
-        {% if user.is_authenticated %}
-          {% if user.username == c.author or user.username == post.author %}
-            | <a href="{% url 'comment_delete' c.pk %}">Delete</a>
-          {% endif %}
-        {% endif %}
-      </li>
-    {% empty %}
-      <li>No comments yet.</li>
-    {% endfor %}
-  </ul>
-
-  {% if user.is_authenticated %}
-    <h3>Add a comment</h3>
-    <form method="post" action="{% url 'comment_create' post.slug %}">
-      {% csrf_token %}
-      <textarea name="content" rows="3" placeholder="Write a comment..." required></textarea>
-      <br><button type="submit">Post comment</button>
-    </form>
-  {% else %}
-    <p><a href="{% url 'login' %}?next={% url 'post_detail' post.slug %}">Log in</a> to comment.</p>
-  {% endif %}
-</body>
-</html>
+<p><a href="{% url 'post_list' %}">← Back</a></p>
+{% endblock %}
 
