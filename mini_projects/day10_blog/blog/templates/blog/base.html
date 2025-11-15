@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Day10 Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; }
+    header, nav, main { max-width: 900px; margin: 0 auto; padding: 12px; }
+    header { background: #f7f7f7; border-bottom: 1px solid #e5e5e5; }
+    nav a { margin-right: 10px; text-decoration: none; color: #0366d6; }
+    .flash { background:#fff8c5; border:1px solid #ffd33d; padding:8px; margin:10px 0; }
+  </style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;">Day10 Blog</h1>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/posts/new/">New Post</a>
+    <a href="/api/docs/">API Docs</a>
+    {% if request.user.is_authenticated %}
+      <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" style="border:none; background:none; color:#d73a49; cursor:pointer;">Logout ({{ request.user.username }})</button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}">Login</a>
+    {% endif %}
+  </nav>
+</header>
+
+<main>
+  {% if messages %}
+    <div class="flash">
+      {% for m in messages %}{{ m }}<br>{% endfor %}
+    </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
+
