@@ -1,34 +1,38 @@
-from django.views.generic import RedirectView 
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 
-from rest_framework.authtoken.views import obtain_auth_token
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from blog.api_views import PostViewSet
+from rest_framework.routers import DefaultRouter
+
+# DRF router
+router = DefaultRouter()
+router.register("posts", PostViewSet, basename="post")
+
+# drf-spectacular schema
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView
+
+from blog.views import LogoutPostOnlyView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
 
-    # Auth (HTML + session)
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    # HTML app
+    path("", include("blog.urls")),
 
-    # API docs
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    # Auth (logout is POST-only via custom view)
+    path("login/", auth_views.LoginView.as_view(template_name="blog/login.html"), name="login"),
+    path("logout/", LogoutPostOnlyView.as_view(), name="logout"),
 
-    # DRF APIs
-    path('api/', include('blog.api_urls')),       # Day 18 read-only
-    path('api/v1/', include('blog.api_v1_urls')), # Day 19 write-capable
-
-    # Token auth
-    path('api/token-auth/', obtain_auth_token, name='api_token_auth'),
-
-    # HTML site
-    path('', include('blog.urls')),
-
-# Safety net: if anything points to the default URL, send it to your real login page
-    path('accounts/login/', RedirectView.as_view(url='/login/', permanent=False)),
-
+    # API
+    path("api/v1/", include(router.urls)),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
+
+# Serve media in debug
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

@@ -1,40 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>My Blog Posts</title></head>
-<body>
-  <h1>📝 My Blog Posts</h1>
-
-  {% if messages %}
-    <ul>
-      {% for message in messages %}<li>{{ message }}</li>{% endfor %}
-    </ul>
-  {% endif %}
-
-  <p><a href="{% url 'post_create' %}">+ Create New Post</a> | <a href="/login/">Login</a> | <a href="/logout/">Logout</a></p>
-
-  <ul>
-    {% for post in posts %}
-      <li>
-        <a href="{% url 'post_detail' post.slug %}"><strong>{{ post.title }}</strong></a>
-        — {{ post.author }}<br>
-        <small>Posted: {{ post.date_posted }}</small>
-      </li>
-    {% empty %}
-      <li>No posts yet.</li>
-    {% endfor %}
-  </ul>
-
-  {% if is_paginated %}
-    <div>
-      {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}">&laquo; Prev</a>
-      {% endif %}
-      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-      {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}">Next &raquo;</a>
-      {% endif %}
-    </div>
-  {% endif %}
-</body>
-</html>
+{% extends "blog/base.html" %}
+{% block content %}
+<h1>Posts</h1>
+{% for post in posts %}
+  <div class="card">
+    <h2 style="margin:0 0 4px 0;"><a href="{% url 'post_detail' post.slug %}">{{ post.title }}</a></h2>
+    <div class="muted">by {{ post.author }} — {{ post.created_at|date:"Y-m-d H:i" }}{% if post.updated_at > post.created_at %} (updated){% endif %}</div>
+    <p>{{ post.content|truncatechars:160 }}</p>
+  </div>
+{% empty %}
+  <p>No posts yet.</p>
+{% endfor %}
+{% endblock %}
 

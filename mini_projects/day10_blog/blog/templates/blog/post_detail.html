@@ -1,18 +1,85 @@
 {% extends "blog/base.html" %}
 {% block content %}
-<article>
-  <h2>{{ post.title }}</h2>
-  <p>by {{ post.author }} • {{ post.created|date:"Y-m-d H:i" }}</p>
+  <article>
+    <h1>{{ post.title }}</h1>
+    <p>
+      <small>
+        by {{ post.author }} • {{ post.created_at|date:"Y-m-d H:i" }}
+        {% if post.updated_at and post.updated_at != post.created_at %}
+          (updated {{ post.updated_at|date:"Y-m-d H:i" }})
+        {% endif %}
+      </small>
+    </p>
 
-  {% if post.cover %}
-    <img src="{{ post.cover.url }}" alt="cover" style="max-width:600px;height:auto;border-radius:6px;margin:8px 0;">
-  {% endif %}
+    {% if post.cover %}
+      <p>
+        <img src="{{ post.cover.url }}" alt="cover for {{ post.title }}"
+             style="max-width:600px;height:auto;border-radius:8px;">
+      </p>
+    {% endif %}
 
-  <div>
-    {{ post.content|linebreaks }}
-  </div>
-</article>
+    <div>
+      {{ post.content|linebreaks }}
+    </div>
 
-<p><a href="{% url 'post_list' %}">← Back</a></p>
+    {% if user.is_authenticated %}
+      {% if user.username == post.author %}
+        <p>
+          <a href="{% url 'post_update' post.slug %}">Edit</a>
+          |
+          <a href="{% url 'post_delete' post.slug %}">Delete</a>
+        </p>
+      {% endif %}
+    {% endif %}
+  </article>
+
+  <hr>
+
+  <section>
+    <h2>Comments</h2>
+
+    {% if comments %}
+      <ul>
+        {% for c in comments %}
+          <li style="margin-bottom:1rem;">
+            <p><strong>{{ c.author }}</strong> • {{ c.created_at|date:"Y-m-d H:i" }}</p>
+            <p>{{ c.content|linebreaks }}</p>
+
+            {% if user.is_authenticated %}
+              {% if user.is_superuser %}
+                <form method="post" action="{% url 'comment_delete' post.slug c.pk %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit">Delete</button>
+                </form>
+              {% else %}
+                {% if user.username == c.author %}
+                  <form method="post" action="{% url 'comment_delete' post.slug c.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit">Delete</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No comments yet.</p>
+    {% endif %}
+
+    <h3>Add a comment</h3>
+    {% if user.is_authenticated %}
+      <form method="post" action="{% url 'comment_create' post.slug %}">
+        {% csrf_token %}
+        <p>
+          <label for="id_content">Comment</label><br>
+          <textarea id="id_content" name="content" rows="5" required></textarea>
+        </p>
+        <button type="submit">Add Comment</button>
+      </form>
+    {% else %}
+      <p><a href="{% url 'login' %}?next={{ request.path }}">Log in</a> to comment.</p>
+    {% endif %}
+  </section>
 {% endblock %}
 
