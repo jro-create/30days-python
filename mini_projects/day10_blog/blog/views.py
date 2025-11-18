@@ -1,54 +1,49 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth import logout
+from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
-from django.views.generic import (
-    ListView, DetailView, CreateView, UpdateView, DeleteView, View
-)
-from django.http import HttpResponseRedirect
+from django.views import View
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from .models import Post, Comment
 from .forms import PostForm, CommentForm
 
-
-# ---------- Post list & detail ----------
 
 class PostListView(ListView):
     model = Post
     template_name = "blog/post_list.html"
     context_object_name = "posts"
-    paginate_by = 5
+    paginate_by = 10
 
 
 class PostDetailView(DetailView):
     model = Post
     template_name = "blog/post_detail.html"
+    context_object_name = "post"
     slug_field = "slug"
     slug_url_kwarg = "slug"
-    context_object_name = "post"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        post = self.object
-        # Support either related_name="comments" or default comment_set
-        rel = getattr(post, "comments", None)
-        ctx["comments"] = rel.all() if rel is not None else post.comment_set.all()
-        ctx["comment_form"] = CommentForm()
+        post = self.get_object()
+        ctx["comments"] = post.comments.order_by("-created_at")
+        if self.request.user.is_authenticated:
+            ctx["comment_form"] = CommentForm()
         return ctx
 
-
-# ---------- Create / Update / Delete posts ----------
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     model = Post
     template_name = "blog/post_form.html"
-    form_class = PostForm  # single source of truth; do NOT declare `fields`
+    form_class = PostForm
 
     def form_valid(self, form):
-        # Your project stores author as a string (username)
-        form.instance.author = self.request.user.username
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("post_detail", kwargs={"slug": self.object.slug})
+        obj = form.save(commit=False)
+        obj.author = self.request.user.username
+        obj.save()
+        messages.success(self.request, "Post created.")
+        return redirect(obj.get_absolute_url())
 
 
 class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -57,12 +52,18 @@ class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     form_class = PostForm
     slug_field = "slug"
     slug_url_kwarg = "slug"
+    raise_exception = True  # return 403 instead of redirect
 
     def test_func(self):
         return self.get_object().author == self.request.user.username
 
-    def get_success_url(self):
-        return reverse("post_detail", kwargs={"slug": self.object.slug})
+    def form_valid(self, form):
+        obj = form.save(commit=False)
+        # keep original author
+        obj.author = self.get_object().author
+        obj.save()
+        messages.success(self.request, "Post updated.")
+        return redirect(obj.get_absolute_url())
 
 
 class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
@@ -70,16 +71,14 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     template_name = "blog/post_confirm_delete.html"
     slug_field = "slug"
     slug_url_kwarg = "slug"
-    success_url = reverse_lazy("post_list")  # class attribute needs reverse_lazy
+    success_url = reverse_lazy("post_list")
+    raise_exception = True
 
     def test_func(self):
         return self.get_object().author == self.request.user.username
 
 
-# ---------- Comments ----------
-
 class CommentCreateView(LoginRequiredMixin, View):
-    """Create a comment under a post (POST only)."""
     def post(self, request, slug):
         post = get_object_or_404(Post, slug=slug)
         form = CommentForm(request.POST)
@@ -88,33 +87,50 @@ class CommentCreateView(LoginRequiredMixin, View):
             comment.post = post
             comment.author = request.user.username
             comment.save()
-        return HttpResponseRedirect(reverse("post_detail", kwargs={"slug": slug}))
+            messages.success(request, "Comment added.")
+        else:
+            messages.error(request, "Could not add comment. Please check the form.")
+        return redirect(post.get_absolute_url())
+
+    def get(self, request, slug):
+        return HttpResponseNotAllowed(["POST"])
 
 
-class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
-    """Delete a comment (POST only). Route carries both post slug and comment pk."""
-    def dispatch(self, request, *args, **kwargs):
-        self.post_obj = get_object_or_404(Post, slug=kwargs["slug"])
-        self.comment = get_object_or_404(Comment, pk=kwargs["pk"], post=self.post_obj)
-        return super().dispatch(request, *args, **kwargs)
+class CommentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = Comment
+    template_name = "blog/comment_confirm_delete.html"
+    pk_url_kwarg = "pk"
+    raise_exception = True
+
+    def get_queryset(self):
+        return Comment.objects.select_related("post")
 
     def test_func(self):
-        # Only the comment author (or superuser) can delete
-        return (
-            self.comment.author == self.request.user.username
-            or self.request.user.is_superuser
-        )
+        obj = self.get_object()
+        return obj.author == self.request.user.username or self.request.user.is_superuser
 
-    def post(self, request, slug, pk):
-        self.comment.delete()
-        return HttpResponseRedirect(reverse("post_detail", kwargs={"slug": slug}))
+    def get_success_url(self):
+        return self.get_object().post.get_absolute_url()
 
-
-# ---------- Legacy redirects (keep old pk-based URLs working) ----------
 
 class LegacyPostDetailRedirect(View):
-    """Support old /posts/<pk>/ by redirecting to canonical /posts/<slug>/. """
+    """
+    Keep legacy pk route and redirect to canonical slug route.
+    """
     def get(self, request, pk):
         post = get_object_or_404(Post, pk=pk)
-        return redirect("post_detail", slug=post.slug)
+        return redirect(post.get_absolute_url(), permanent=True)
+
+
+class LogoutPostOnlyView(LoginRequiredMixin, View):
+    """
+    Enforce POST-only logout to match your guardrail.
+    """
+    def post(self, request):
+        logout(request)
+        messages.info(request, "Logged out.")
+        return redirect("post_list")
+
+    def get(self, request):
+        return HttpResponseNotAllowed(["POST"])
 

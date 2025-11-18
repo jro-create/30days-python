@@ -1,25 +1,39 @@
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>{% if object %}Edit{% else %}Create{% endif %} Post</title></head>
-<body>
-  <!-- Flash messages -->
-  {% if messages %}
-    <ul>
-      {% for message in messages %}
-        <li>{{ message }}</li>
-      {% endfor %}
-    </ul>
+{% extends "blog/base.html" %}
+{% block content %}
+<h2>{% if view.object %}Edit Post{% else %}New Post{% endif %}</h2>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  {{ form.non_field_errors }}
+
+  <p>
+    {{ form.title.label_tag }}
+    {{ form.title }}
+    {{ form.title.errors }}
+  </p>
+
+  <p>
+    {{ form.content.label_tag }}
+    {{ form.content }}
+    {{ form.content.errors }}
+  </p>
+
+  <p>
+    {{ form.cover.label_tag }}
+    {{ form.cover }}
+    {{ form.cover.errors }}
+  </p>
+
+  {% if form.instance.pk and form.instance.cover %}
+    <p>Current cover:</p>
+    <img src="{{ form.instance.cover.url }}" alt="cover"
+         style="max-width:320px;height:auto;border-radius:6px;">
   {% endif %}
 
-  <h1>{% if object %}Edit{% else %}Create{% endif %} Post</h1>
+  <button type="submit">Save</button>
+</form>
 
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-  </form>
-
-  <p><a href="{% url 'post_list' %}">← Back</a></p>
-</body>
-</html>
+<p><a href="{% url 'post_list' %}">← Back</a></p>
+{% endblock %}
 
