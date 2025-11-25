@@ -3,19 +3,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 
-def unique_slugify(instance, value, slug_field_name="slug"):
-    """
-    Make a unique slug from 'value' by suffixing -1, -2, ... if needed.
-    """
-    slug_base = slugify(value) or "post"
-    slug = slug_base
-    ModelClass = instance.__class__
-    i = 1
-    while ModelClass.objects.filter(**{slug_field_name: slug}).exclude(pk=instance.pk).exists():
-        i += 1
-        slug = f"{slug_base}-{i}"
-    return slug
-
 class Post(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, db_index=True)

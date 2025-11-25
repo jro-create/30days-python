@@ -1,0 +1,33 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.build/
+dist/
+venv/
+
+# Django
+*.log
+db.sqlite3
+staticfiles/
+static/
+media/
+.env
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# Node leftovers (if any)
+node_modules/
+
+# Coverage / test
+.coverage
+htmlcov/
+
