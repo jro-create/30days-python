@@ -1,22 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>My Blog</title>
-</head>
-<body>
-    <h1>📖 My Blog Posts</h1>
-    <ul>
-        {% for post in posts %}
-            <li>
-                <strong>{{ post.title }}</strong> — by {{ post.author }}
-                <p>{{ post.content }}</p>
-                <small>Posted on: {{ post.date_posted }}</small>
-            </li>
-        {% empty %}
-            <li>No posts yet.</li>
-        {% endfor %}
-    </ul>
-</body>
-</html>
+<h1>📝 My Blog Posts</h1>
+<ul>
+  {% for post in posts %}
+    <li><strong>{{ post.title }}</strong> — {{ post.author }} <br> {{ post.content }}</li>
+  {% empty %}
+    <li>No posts yet.</li>
+  {% endfor %}
+</ul>
 

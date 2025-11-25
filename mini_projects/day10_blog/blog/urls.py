@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
-    PostListView, PostDetailView, PostCreateView, PostUpdateView,
-    PostDeleteView, CommentCreateView, CommentDeleteView, LegacyPostDetailRedirect,
+    PostListView, PostDetailView, PostCreateView, PostUpdateView, PostDeleteView,
+    CommentCreateView, CommentDeleteView, LegacyPostDetailRedirect,
 )
 
 urlpatterns = [
@@ -10,9 +10,12 @@ urlpatterns = [
     path("posts/<slug:slug>/", PostDetailView.as_view(), name="post_detail"),
     path("posts/<slug:slug>/edit/", PostUpdateView.as_view(), name="post_update"),
     path("posts/<slug:slug>/delete/", PostDeleteView.as_view(), name="post_delete"),
+
+    # comments
     path("posts/<slug:slug>/comment/", CommentCreateView.as_view(), name="comment_create"),
     path("posts/<slug:slug>/comments/<int:pk>/delete/", CommentDeleteView.as_view(), name="comment_delete"),
-    # legacy pk -> slug redirect
+
+    # legacy pk redirect
     path("posts/<int:pk>/", LegacyPostDetailRedirect.as_view(), name="post_detail_legacy"),
 ]
 

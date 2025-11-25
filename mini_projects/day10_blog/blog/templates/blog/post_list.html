@@ -1,11 +1,15 @@
 {% extends "blog/base.html" %}
 {% block content %}
-<h1>Posts</h1>
-{% for post in posts %}
+<h1>My Blog Posts</h1>
+
+{% for post in object_list %}
   <div class="card">
     <h2 style="margin:0 0 4px 0;"><a href="{% url 'post_detail' post.slug %}">{{ post.title }}</a></h2>
-    <div class="muted">by {{ post.author }} — {{ post.created_at|date:"Y-m-d H:i" }}{% if post.updated_at > post.created_at %} (updated){% endif %}</div>
-    <p>{{ post.content|truncatechars:160 }}</p>
+    <div class="muted">by {{ post.author }} — {{ post.created_at|date:"Y-m-d H:i" }}{% if post.updated_at and post.updated_at|date:"U" != post.created_at|date:"U" %} (updated){% endif %}</div>
+    {% if post.cover %}
+      <p><img class="img-cover" src="{{ post.cover.url }}" alt="cover"></p>
+    {% endif %}
+    <p>{{ post.content|truncatechars:140 }}</p>
   </div>
 {% empty %}
   <p>No posts yet.</p>
