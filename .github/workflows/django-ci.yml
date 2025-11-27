@@ -1,61 +1,61 @@
-# .github/workflows/django-ci.yml
-
 name: Django CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: ["main", "develop"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.11, 3.12]
+        python-version: ["3.11", "3.12"]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: "pip"
 
     - name: Install dependencies 🛠️
       working-directory: mini_projects/day10_blog
       run: |
         python -m pip install --upgrade pip
-        # 1. Install required packages from requirements.txt
         pip install -r requirements.txt
-        # 2. **FIX:** Explicitly install Pillow for ImageField support
-        pip install Pillow
-        
-        # Optional: install coverage if you plan to use it
-        pip install coverage 
-        
+        pip install django-filter
+
+    - name: Verify imports 🔍
+      working-directory: mini_projects/day10_blog
+      run: |
+        python - << 'EOF'
+        import django, rest_framework, django_filters, PIL
+        print("Django:", django.get_version())
+        print("DRF:", rest_framework.__version__)
+        print("django-filter OK")
+        print("Pillow:", PIL.__version__)
+        EOF
+
     - name: Run migrations 🏗️
       working-directory: mini_projects/day10_blog
       env:
         DJANGO_SETTINGS_MODULE: day10_blog.settings
-        # Define a secret key, even if dummy
-        SECRET_KEY: "dummy-key-for-ci" 
-        # Optional: Skip system checks related to unapplied migrations 
-        # (useful if you don't commit migration files)
-        SKIP_MIGRATION_CHECK: "True" 
+        SECRET_KEY: "ci-secret"
       run: |
-        python manage.py migrate
+        python manage.py migrate --noinput
 
     - name: Run tests with coverage ✅
       working-directory: mini_projects/day10_blog
       env:
         DJANGO_SETTINGS_MODULE: day10_blog.settings
-        SECRET_KEY: "dummy-key-for-ci"
-        # Set DEBUG to False, as production systems do
-        DEBUG: "False" 
+        SECRET_KEY: "ci-secret"
       run: |
-        # Use coverage to run tests and generate a report
         coverage run manage.py test
         coverage report
