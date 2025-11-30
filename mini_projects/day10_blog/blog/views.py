@@ -16,6 +16,18 @@ class PostListView(ListView):
     context_object_name = "posts"
     paginate_by = 10
 
+    def get_queryset(self):
+       qs = Post.objects.order_by("-created_at")
+       q = self.request.GET.get("q", "").strip()
+       author = self.request.GET.get("author", "").strip()
+
+       if q:
+           qs = qs.filter(title__icontains=q)
+
+       if author:
+           qs = qs.filter(author=author)
+
+       return qs
 
 class PostDetailView(DetailView):
     model = Post

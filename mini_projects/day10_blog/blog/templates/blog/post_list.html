@@ -1,6 +1,11 @@
 {% extends "blog/base.html" %}
 {% block content %}
 <h1>My Blog Posts</h1>
+<form method="get" style="margin: 12px 0;">
+    <input type="text" name="q" placeholder="Search title…" value="{{ request.GET.q }}">
+    <input type="text" name="author" placeholder="Filter by author…" value="{{ request.GET.author }}">
+    <button type="submit">Search</button>
+</form>
 
 {% for post in object_list %}
   <div class="card">
